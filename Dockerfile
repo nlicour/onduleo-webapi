@@ -1,5 +1,5 @@
 # --- Build ---
-FROM rust:1.83-slim AS builder
+FROM rust AS builder
 WORKDIR /build
 
 # Cache des dépendances : on ne re-télécharge que si Cargo.* change
@@ -11,7 +11,7 @@ COPY src ./src
 RUN touch src/main.rs && cargo build --release
 
 # --- Runtime ---
-FROM debian:bookworm-slim
+FROM debian:slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
