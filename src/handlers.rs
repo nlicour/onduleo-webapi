@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
+    response::IntoResponse,
     Json,
 };
 use std::sync::Arc;
@@ -58,5 +59,59 @@ pub async fn delete_exercice(
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
+    }
+}
+
+/// GET /exercices/export/pdf — export all exercices as PDF
+pub async fn export_all_pdf(State(state): State<AppState>) -> impl IntoResponse {
+    let exercices = state.list();
+    match crate::export::pdf::generate_pdf(&exercices, "Fiche exercices — Tous") {
+        Ok(bytes) => (
+            [
+                (header::CONTENT_TYPE, "application/pdf"),
+                (
+                    header::CONTENT_DISPOSITION,
+                    "attachment; filename=\"exercices.pdf\"",
+                ),
+            ],
+            bytes,
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur génération PDF: {}", e),
+        )
+            .into_response(),
+    }
+}
+
+/// GET /exercices/:code/export/pdf — export a single exercice as PDF
+pub async fn export_one_pdf(
+    State(state): State<AppState>,
+    Path(code): Path<String>,
+) -> impl IntoResponse {
+    match state.get(&code) {
+        Some(exercice) => {
+            let titre = format!("Fiche exercice — {}", exercice.nom);
+            match crate::export::pdf::generate_pdf(&[exercice.clone()], &titre) {
+                Ok(bytes) => {
+                    let filename = format!("attachment; filename=\"{}.pdf\"", code);
+                    (
+                        [
+                            (header::CONTENT_TYPE, "application/pdf"),
+                            (header::CONTENT_DISPOSITION, filename.as_str()),
+                        ],
+                        bytes,
+                    )
+                        .into_response()
+                }
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Erreur génération PDF: {}", e),
+                )
+                    .into_response(),
+            }
+        }
+        None => (StatusCode::NOT_FOUND, "Exercice non trouvé").into_response(),
     }
 }

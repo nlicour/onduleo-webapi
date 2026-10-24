@@ -1,3 +1,4 @@
+mod export;
 mod handlers;
 mod models;
 mod seed;
@@ -23,6 +24,13 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(|| async { "Onduleo API — see /exercices" }))
+        // Export routes — must come before /exercices/{code} to avoid conflict
+        .route("/exercices/export/pdf", get(handlers::export_all_pdf))
+        .route(
+            "/exercices/{code}/export/pdf",
+            get(handlers::export_one_pdf),
+        )
+        // CRUD routes
         .route("/exercices", get(handlers::list_exercices))
         .route("/exercices", post(handlers::create_exercice))
         .route("/exercices/{code}", get(handlers::get_exercice))
